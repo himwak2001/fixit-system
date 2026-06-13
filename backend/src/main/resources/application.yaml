@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fixit_db
+    username: root
+    password: root
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  liquibase:
+    enabled: true
+    change-log: db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: "http://localhost:8180/realms/fixit-realm"
+
+  redis:
+    host: localhost
+    port: 6379
+  cache:
+    type: redis
+
+logging:
+  level:
+    org:
+      springframework:
+        cache: TRACE
+
+info:
+  app:
+    name: "Fixit - Facility Issue Resolution System"
+    description: "This project solves a highly visible, real-world problem: managing maintenance requests (plumbing, IT, electrical) for corporate offices, university dorms, or apartment complexes."
+    version: "1.0.0"
