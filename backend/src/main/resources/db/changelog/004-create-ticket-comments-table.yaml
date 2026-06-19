@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: '004'
+      author: himanshu
+      changes:
+        - createTable:
+            tableName: ticket_comments_tbl
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: ticket_id
+                  type: UUID
+              - column:
+                  name: user_id
+                  type: UUID
+              - column:
+                  name: comment
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: DATE

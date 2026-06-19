@@ -1,0 +1,17 @@
+package com.app.ticket.validation.validator;
+
+import com.app.ticket.validation.annotation.ValidateTicketCategory;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class TicketCategoryValidator implements ConstraintValidator<ValidateTicketCategory, String> {
+
+    @Override
+    public boolean isValid(String value, ConstraintValidatorContext context) {
+        List<String> validCategories = Arrays.asList("PLUMBING", "ELECTRICAL", "HVAC", "CLEANING", "OTHER");
+        return value != null && validCategories.contains(value.trim().toUpperCase());
+    }
+}
