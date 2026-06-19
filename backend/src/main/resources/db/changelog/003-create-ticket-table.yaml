@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: '003'
+      author: himanshu
+      changes:
+        - createTable:
+            tableName: tickets_tbl
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: ticket_number
+                  type: VARCHAR(15)
+              - column:
+                  name: title
+                  type: VARCHAR(256)
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: category
+                  type: VARCHAR(20)
+              - column:
+                  name: priority
+                  type: VARCHAR(20)
+              - column:
+                  name: location
+                  type: VARCHAR(256)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+              - column:
+                  name: created_by
+                  type: UUID
+              - column:
+                  name: assigned_to
+                  type: UUID
+              - column:
+                  name: created_at
+                  type: DATE
+              - column:
+                  name: updated_at
+                  type: DATE
+              - column:
+                  name: resolved_at
+                  type: DATE
