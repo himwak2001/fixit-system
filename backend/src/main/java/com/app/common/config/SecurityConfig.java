@@ -2,6 +2,7 @@ package com.app.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -16,6 +17,8 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/tickets/**").hasAnyRole("TENANT", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets/me/**", "/api/v1/tickets/**").hasRole("TENANT")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
