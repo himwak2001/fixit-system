@@ -24,7 +24,7 @@ public class AuthenticationUtil {
         UserRole userRole = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(String::toUpperCase)
-                .filter(role -> role.contains("ROLE_ADMIN") || role.contains("ROLE_CUSTOMER") || role.contains("ROLE_AGENT"))
+                .filter(role -> role.contains("ROLE_TENANT") || role.contains("ROLE_TECHNICIAN") || role.contains("ROLE_ADMIN"))
                 .findFirst()
                 .map(this::mapToRoleEnum)
                 .orElse(UserRole.TENANT);

@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/004-create-ticket-comments-table.yaml
   - include:
       file: db/changelog/005-create-ticket-attachment-table.yaml
+  - include:
+      file: db/changelog/006-add-specialization-to-ticket.yaml

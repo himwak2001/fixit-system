@@ -10,7 +10,10 @@ import java.util.List;
 public class TicketPriorityValidator implements ConstraintValidator<ValidateTicketPriority, String> {
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
+        if (value == null) {
+            return true;
+        }
         List<String> validPriorities = Arrays.asList("LOW", "MEDIUM", "HIGH", "URGENT");
-        return value != null && validPriorities.contains(value.trim().toUpperCase());
+        return validPriorities.contains(value.trim().toUpperCase());
     }
 }

@@ -11,7 +11,10 @@ public class TicketCategoryValidator implements ConstraintValidator<ValidateTick
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
+        if (value == null) {
+            return true;
+        }
         List<String> validCategories = Arrays.asList("PLUMBING", "ELECTRICAL", "HVAC", "CLEANING", "OTHER");
-        return value != null && validCategories.contains(value.trim().toUpperCase());
+        return validCategories.contains(value.trim().toUpperCase());
     }
 }
