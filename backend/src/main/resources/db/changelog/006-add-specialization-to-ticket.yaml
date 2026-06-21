@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: '006'
+      author: himanshu
+      changes:
+        - addColumn:
+            tableName: tickets_tbl
+            columns:
+              - column:
+                  name: specialization
+                  type: VARCHAR(150)

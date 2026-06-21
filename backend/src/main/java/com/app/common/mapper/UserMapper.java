@@ -2,6 +2,7 @@ package com.app.common.mapper;
 
 import com.app.auth.dto.UserProfileDTO;
 import com.app.auth.entity.User;
+import com.app.ticket.dto.TechnicianDto;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,13 @@ public class UserMapper {
         user.setRole(dto.getRole());
         user.setPhone(dto.getPhone());
         user.setCreatedAt(LocalDateTime.now());
+    }
+
+    public TechnicianDto mapUserToTechnicianDto(User user) {
+        return TechnicianDto.builder()
+                .id(user.getKeycloakId())
+                .name(user.getFullName())
+                .specialization(user.getSpecialization()).build();
     }
 
     private UUID generateUUID() {
