@@ -2,21 +2,29 @@ package com.app.ticket.service;
 
 import com.app.auth.dto.UserProfileDTO;
 import com.app.auth.entity.User;
+import com.app.auth.entity.UserRole;
 import com.app.auth.repository.IUserRepository;
+import com.app.common.exception.BusinessRuleException;
 import com.app.common.exception.ResourceNotFoundException;
+import com.app.common.exception.UnauthorizedAccessException;
+import com.app.common.mapper.UserMapper;
 import com.app.common.util.AuthenticationUtil;
 import com.app.ticket.dto.*;
 import com.app.ticket.entity.Ticket;
 import com.app.ticket.entity.TicketAttachment;
 import com.app.ticket.entity.TicketComment;
+import com.app.ticket.entity.TicketStatus;
 import com.app.ticket.mapper.TicketMapper;
 import com.app.ticket.repository.ITicketAttachmentRepository;
 import com.app.ticket.repository.ITicketCommentRepository;
 import com.app.ticket.repository.ITicketRepository;
 import com.app.ticket.specification.TicketSpecification;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,9 +34,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,9 +49,26 @@ public class TicketServiceImpl implements ITicketService {
     private final AuthenticationUtil authenticationUtil;
     private final TicketSpecification ticketSpecification;
     private final TicketMapper mapper;
+    private final UserMapper userMapper;
+    private Map<TicketStatus, Set<TicketStatus>> statusTransition;
 
-    @Transactional
+    @PostConstruct
+    void init() {
+        statusTransition = new EnumMap<>(TicketStatus.class);
+        statusTransition.put(TicketStatus.OPEN, EnumSet.of(TicketStatus.ASSIGNED));
+        statusTransition.put(TicketStatus.ASSIGNED, EnumSet.of(TicketStatus.IN_PROGRESS));
+        statusTransition.put(TicketStatus.IN_PROGRESS, EnumSet.of(TicketStatus.RESOLVED));
+        statusTransition.put(TicketStatus.RESOLVED, EnumSet.of(TicketStatus.CLOSED, TicketStatus.IN_PROGRESS));
+        statusTransition.put(TicketStatus.CLOSED, EnumSet.noneOf(TicketStatus.class));
+    }
+
     @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true)
+    })
     public String createTicket(TicketCreateRequest request) {
         // get the user
         UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
@@ -69,7 +93,7 @@ public class TicketServiceImpl implements ITicketService {
     }
 
     @Override
-    @Cacheable(value = "tickets:list", keyGenerator = "ticketListKeyGenerator")
+    @Cacheable(value = "ticket:list", keyGenerator = "ticketListKeyGenerator")
     public Page<TicketResponseDTO> getMyTickets(int pageNumber, int pageSize, String status, String category) {
         // get user from authentication object
         UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
@@ -113,6 +137,125 @@ public class TicketServiceImpl implements ITicketService {
         return new TicketSummaryDTO(ticketDto, comments, attachments);
     }
 
+    @Override
+    @Cacheable(value = "ticket:technicianTickets", key = "'technicianAssignTickets'")
+    public List<TicketResponseDTO> getTechnicianAssignedTicket(String status) {
+        // get user from authentication object
+        UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
+        Optional<User> user = userRepository.findByKeycloakId(userDto.getKeycloakId());
+        if (user.isEmpty()) {
+            throw new ResourceNotFoundException("User", "keycloak id", userDto.getKeycloakId());
+        }
+
+        // Build Specifications
+        Specification<Ticket> spec = Specification.allOf(
+                ticketSpecification.hasAssignedToId(user.get().getId()),
+                ticketSpecification.hasStatus(status)
+        );
+
+        return ticketRepository.findAll(spec).stream()
+                .map(mapper::mapTicketToResponseDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true)
+    })
+    public void startTicketByTechnician(String ticketNumber) {
+        transitionTicketStatus(ticketNumber, TicketStatus.IN_PROGRESS);
+    }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true)
+    })
+    public void resolveTicketByTechnician(String ticketNumber) {
+        transitionTicketStatus(ticketNumber, TicketStatus.RESOLVED);
+    }
+
+    @Override
+    @Cacheable(value = "ticket:list", keyGenerator = "ticketListKeyGenerator")
+    public Page<TicketResponseDTO> getTickets(int pageNumber, int pageSize, String status, String category, String priority, LocalDateTime startDate, LocalDateTime endDate) {
+        // Build Specifications
+        Specification<Ticket> spec = Specification.allOf(
+                ticketSpecification.hasStatus(status),
+                ticketSpecification.hasCategory(category),
+                ticketSpecification.hasPriority(priority),
+                ticketSpecification.hasCreatedBetween(startDate, endDate)
+        );
+
+        // Build pageable
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+
+        // Fetch and Map
+        Page<Ticket> ticketPage = ticketRepository.findAll(spec, pageable);
+
+        return ticketPage.map(mapper::mapTicketToResponseDto);
+    }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true)
+    })
+    public void assignTicketToTechnician(AssignTicketRequest assignRequest) {
+        // Fetch ticket and validate existence
+        Ticket savedTicket = ticketRepository.findByTicketNumber(assignRequest.getTicketNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", assignRequest.getTicketNumber()));
+
+        // Get user and validate existence
+        User user = userRepository.findByKeycloakId(assignRequest.getAssigneeId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "keycloak id", assignRequest.getAssigneeId()));
+
+        savedTicket.setAssignedTo(user);
+        savedTicket.setStatus(TicketStatus.ASSIGNED);
+        ticketRepository.save(savedTicket);
+    }
+
+    @Override
+    @Cacheable(value = "ticket:technicians", key = "'all'")
+    public List<TechnicianDto> getTechnicianWithSpecialization() {
+        List<User> technicians = userRepository.findByRole(UserRole.TECHNICIAN);
+        return technicians.stream()
+                .map(userMapper::mapUserToTechnicianDto)
+                .collect(Collectors.toList());
+    }
+
+    private void transitionTicketStatus(String ticketNumber, TicketStatus targetStatus) {
+        // Get user and validate existence
+        UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
+        User user = userRepository.findByKeycloakId(userDto.getKeycloakId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "keycloak id", userDto.getKeycloakId()));
+
+        // Fetch ticket and validate existence
+        Ticket savedTicket = ticketRepository.findByTicketNumber(ticketNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", ticketNumber));
+
+        // State Machine Check: Is the transition valid?
+        Set<TicketStatus> validNextStatus = statusTransition.getOrDefault(savedTicket.getStatus(), Collections.emptySet());
+        if (!validNextStatus.contains(targetStatus)) {
+            throw new BusinessRuleException(savedTicket.getStatus().name(), targetStatus.name());
+        }
+
+        // Ownership check: Is the caller the technician assigned to this ticket?
+        if (savedTicket.getAssignedTo() == null || !savedTicket.getAssignedTo().equals(user)) {
+            throw new UnauthorizedAccessException("You are not the technician assigned to this ticket.");
+        }
+
+        // Update state and save
+        savedTicket.setStatus(targetStatus);
+        savedTicket.setUpdatedAt(LocalDateTime.now());
+        ticketRepository.save(savedTicket);
+    }
 
     private String generateTicketNumber() {
         int currentYear = LocalDate.now().getYear();

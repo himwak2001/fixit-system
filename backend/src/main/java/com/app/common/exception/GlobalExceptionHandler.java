@@ -1,6 +1,7 @@
 package com.app.common.exception;
 
 import com.app.common.response.ErrorResponseDto;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -44,6 +45,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(responseDto);
     }
 
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ErrorResponseDto> businessRuleExceptionHandler(BusinessRuleException ex, WebRequest webRequest) {
+        ErrorResponseDto responseDto = new ErrorResponseDto(
+                webRequest.getDescription(false),
+                HttpStatus.BAD_REQUEST,
+                List.of(ex.getMessage()),
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(responseDto);
+    }
+
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ErrorResponseDto> unauthorizedAccessExceptionHandler(UnauthorizedAccessException ex, WebRequest webRequest) {
+        ErrorResponseDto responseDto = new ErrorResponseDto(
+                webRequest.getDescription(false),
+                HttpStatus.BAD_REQUEST,
+                List.of(ex.getMessage()),
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(responseDto);
+    }
+
     /**
      * Global handler for cases where a validations failed
      *
@@ -63,5 +88,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(validationErrors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, String>> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getConstraintViolations().forEach(violation -> {
+            // Extracts the parameter name (e.g., "getAllTickets.category") and the custom message
+            String propertyPath = violation.getPropertyPath().toString();
+            String paramName = propertyPath.substring(propertyPath.lastIndexOf('.') + 1);
+            errors.put(paramName, violation.getMessage());
+        });
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 }

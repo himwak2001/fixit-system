@@ -19,6 +19,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/tickets/**").hasAnyRole("TENANT", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/me/**", "/api/v1/tickets/**").hasRole("TENANT")
+                        .requestMatchers("/api/v1/technician/tickets/**").hasRole("TECHNICIAN")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
