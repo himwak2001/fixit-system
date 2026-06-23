@@ -243,7 +243,11 @@ public class TicketServiceImpl implements ITicketService {
         // State Machine Check: Is the transition valid?
         Set<TicketStatus> validNextStatus = statusTransition.getOrDefault(savedTicket.getStatus(), Collections.emptySet());
         if (!validNextStatus.contains(targetStatus)) {
-            throw new BusinessRuleException(savedTicket.getStatus().name(), targetStatus.name());
+            throw new BusinessRuleException(String.format(
+                    "Invalid status transition. Cannot move ticket from %s to %s.",
+                    savedTicket.getStatus(),
+                    targetStatus
+            ));
         }
 
         // Ownership check: Is the caller the technician assigned to this ticket?
