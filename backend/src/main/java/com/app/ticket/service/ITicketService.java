@@ -35,5 +35,6 @@ public interface ITicketService {
     // method to get technician's list
     List<TechnicianDto> getTechnicianWithSpecialization();
 
-    // method to get dashboard statistics
+    // method to close ticket by tenant
+    void closeTicket(String ticketNumber);
 }

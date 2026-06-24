@@ -69,6 +69,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(responseDto);
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDto> generalExceptionHandler(Exception ex, WebRequest webRequest) {
+        ErrorResponseDto responseDto = new ErrorResponseDto(
+                webRequest.getDescription(false),
+                HttpStatus.BAD_REQUEST,
+                List.of(ex.getMessage()),
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(responseDto);
+    }
+
     /**
      * Global handler for cases where a validations failed
      *
