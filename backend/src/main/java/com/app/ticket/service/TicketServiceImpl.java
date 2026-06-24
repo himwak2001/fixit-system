@@ -11,8 +11,6 @@ import com.app.common.mapper.UserMapper;
 import com.app.common.util.AuthenticationUtil;
 import com.app.ticket.dto.*;
 import com.app.ticket.entity.Ticket;
-import com.app.ticket.entity.TicketAttachment;
-import com.app.ticket.entity.TicketComment;
 import com.app.ticket.entity.TicketStatus;
 import com.app.ticket.mapper.TicketMapper;
 import com.app.ticket.repository.ITicketAttachmentRepository;
@@ -123,16 +121,8 @@ public class TicketServiceImpl implements ITicketService {
             throw new ResourceNotFoundException("Ticket", "ticket number", ticketNumber);
         }
         TicketResponseDTO ticketDto = mapper.mapTicketToResponseDto(ticket.get());
-        List<CommentDto> comments = commentRepository.findDtoByTicketNumber(ticketNumber);
+        List<CommentResponse> comments = commentRepository.findDtoByTicketNumber(ticketNumber);
         List<AttachmentDto> attachments = attachmentRepository.findDtoByTicketNumber(ticketNumber);
-
-        // generate the pre-signed URL field for each DTO in place
-        /*
-        dtos.forEach(dto -> {
-            String presignedUrl = storageService.generatePreSignedUrl(dto.getS3Key());
-            dto.setUrl(presignedUrl);
-        });
-        * */
 
         return new TicketSummaryDTO(ticketDto, comments, attachments);
     }
@@ -163,7 +153,8 @@ public class TicketServiceImpl implements ITicketService {
     @Caching(evict = {
             @CacheEvict(value = "ticket:list", allEntries = true),
             @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
-            @CacheEvict(value = "ticket:info", allEntries = true)
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true)
     })
     public void startTicketByTechnician(String ticketNumber) {
         transitionTicketStatus(ticketNumber, TicketStatus.IN_PROGRESS);
@@ -218,6 +209,7 @@ public class TicketServiceImpl implements ITicketService {
 
         savedTicket.setAssignedTo(user);
         savedTicket.setStatus(TicketStatus.ASSIGNED);
+        savedTicket.setUpdatedAt(LocalDateTime.now());
         ticketRepository.save(savedTicket);
     }
 
@@ -229,6 +221,34 @@ public class TicketServiceImpl implements ITicketService {
                 .map(userMapper::mapUserToTechnicianDto)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true)
+    })
+    public void closeTicket(String ticketNumber) {
+        // Fetch ticket and validate existence
+        Ticket savedTicket = ticketRepository.findByTicketNumber(ticketNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", ticketNumber));
+
+        // State Machine Check: Is the transition valid?
+        Set<TicketStatus> validNextStatus = statusTransition.getOrDefault(savedTicket.getStatus(), Collections.emptySet());
+        if (!validNextStatus.contains(TicketStatus.CLOSED)) {
+            throw new BusinessRuleException(String.format(
+                    "Invalid status transition. Cannot move ticket from %s to %s.",
+                    savedTicket.getStatus(),
+                    TicketStatus.CLOSED.name()
+            ));
+        }
+
+        savedTicket.setStatus(TicketStatus.CLOSED);
+        savedTicket.setUpdatedAt(LocalDateTime.now());
+        ticketRepository.save(savedTicket);
+    }
+
 
     private void transitionTicketStatus(String ticketNumber, TicketStatus targetStatus) {
         // Get user and validate existence
@@ -243,7 +263,11 @@ public class TicketServiceImpl implements ITicketService {
         // State Machine Check: Is the transition valid?
         Set<TicketStatus> validNextStatus = statusTransition.getOrDefault(savedTicket.getStatus(), Collections.emptySet());
         if (!validNextStatus.contains(targetStatus)) {
-            throw new BusinessRuleException(savedTicket.getStatus().name(), targetStatus.name());
+            throw new BusinessRuleException(String.format(
+                    "Invalid status transition. Cannot move ticket from %s to %s.",
+                    savedTicket.getStatus(),
+                    targetStatus
+            ));
         }
 
         // Ownership check: Is the caller the technician assigned to this ticket?

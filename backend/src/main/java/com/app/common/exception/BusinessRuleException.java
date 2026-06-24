@@ -5,11 +5,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseStatus(HttpStatus.BAD_REQUEST)
 public class BusinessRuleException extends RuntimeException {
-    public BusinessRuleException(String currentStatus, String targetStatus) {
-        super(String.format(
-                "Invalid status transition. Cannot move ticket from %s to %s.",
-                currentStatus,
-                targetStatus
-        ));
+    public BusinessRuleException(String msg) {
+        super(msg);
     }
 }

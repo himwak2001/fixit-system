@@ -2,10 +2,9 @@ package com.app.ticket.controller;
 
 import com.app.common.constants.TicketConstants;
 import com.app.common.response.ApiResponse;
-import com.app.ticket.dto.TicketCreateRequest;
-import com.app.ticket.dto.TicketQueryCriteria;
-import com.app.ticket.dto.TicketResponseDTO;
-import com.app.ticket.dto.TicketSummaryDTO;
+import com.app.ticket.dto.*;
+import com.app.ticket.service.TicketAttachmentServiceImpl;
+import com.app.ticket.service.TicketCommentServiceImpl;
 import com.app.ticket.service.TicketServiceImpl;
 import com.app.ticket.validation.annotation.ValidateTicketCategory;
 import com.app.ticket.validation.annotation.ValidateTicketStatus;
@@ -19,6 +18,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Validated
 @RestController
@@ -26,6 +27,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class TicketController {
     private final TicketServiceImpl ticketService;
+    private final TicketCommentServiceImpl commentService;
+    private final TicketAttachmentServiceImpl ticketAttachmentService;
 
     @PostMapping("/")
     public ResponseEntity<ApiResponse> createTicket(@RequestBody @Valid TicketCreateRequest request) {
@@ -46,5 +49,47 @@ public class TicketController {
         TicketSummaryDTO summary = ticketService.getTicketDetails(ticketNumber);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(summary);
+    }
+
+    @PostMapping(path = "/{ticketNumber}/upload-url")
+    public ResponseEntity<PresignedUrlResponse> getUploadUrl(@PathVariable(name = "ticketNumber") String ticketNumber, @Valid @RequestBody PresignedUrlRequest request) {
+        PresignedUrlResponse response = ticketAttachmentService.generateUploadUrl(ticketNumber, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @PostMapping(path = "/{ticketNumber}/attachments")
+    public ResponseEntity<AttachmentResponse> confirmUpload(@PathVariable(name = "ticketNumber") String ticketNumber, @Valid @RequestBody AttachmentConfirmRequest request) {
+        AttachmentResponse response = ticketAttachmentService.confirmUpload(ticketNumber, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @GetMapping(path = "/{ticketNumber}/attachments/{attachmentId}/view")
+    public ResponseEntity<ViewUrlResponse> getViewUrl(@PathVariable(name = "ticketNumber") String ticketNumber, @PathVariable(name = "attachmentId") UUID attachmentId) {
+        ViewUrlResponse response = ticketAttachmentService.getViewUrl(ticketNumber, attachmentId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @PostMapping(path = "/{ticketNumber}/comments")
+    public ResponseEntity<CommentResponse> addComment(@PathVariable(name = "ticketNumber") String ticketNumber, @Valid @RequestBody CommentRequest request) {
+        CommentResponse response = commentService.addComment(ticketNumber, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    @GetMapping(path = "/{ticketNumber}/comments")
+    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable(name = "ticketNumber") String ticketNumber) {
+        List<CommentResponse> comments = commentService.getComments(ticketNumber);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(comments);
+    }
+
+    @GetMapping("/{ticketNumber}/close")
+    public ResponseEntity<ApiResponse> closeTicket(@PathVariable(name = "ticketNumber") String ticketNumber) {
+        ticketService.closeTicket(ticketNumber);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(new ApiResponse(TicketConstants.STATUS_200, TicketConstants.MESSAGE_200, LocalDateTime.now()));
     }
 }

@@ -1,11 +1,9 @@
 package com.app.ticket.mapper;
 
+import com.app.ticket.dto.CommentResponse;
 import com.app.ticket.dto.TicketCreateRequest;
 import com.app.ticket.dto.TicketResponseDTO;
-import com.app.ticket.entity.Ticket;
-import com.app.ticket.entity.TicketCategory;
-import com.app.ticket.entity.TicketPriority;
-import com.app.ticket.entity.TicketStatus;
+import com.app.ticket.entity.*;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -39,5 +37,15 @@ public class TicketMapper {
         responseDTO.setCreatedAt(ticket.getCreatedAt());
 
         return responseDTO;
+    }
+
+    public CommentResponse toResponse(TicketComment comment) {
+        return CommentResponse.builder()
+                .commentId(comment.getId())
+                .comment(comment.getComment())
+                .commentedBy(comment.getUser().getFullName())
+                .role(comment.getUser().getRole().name())
+                .commentedAt(comment.getCreatedAt())
+                .build();
     }
 }

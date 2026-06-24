@@ -37,6 +37,13 @@ logging:
       springframework:
         cache: TRACE
 
+aws:
+  region: ${AWS_REGION}
+  s3:
+    bucket-name: ${S3_BUCKET_NAME}
+    presigned-url-expiry-minutes: 10
+    presigned-view-url-expiry-minutes: 15
+
 info:
   app:
     name: "Fixit - Facility Issue Resolution System"
