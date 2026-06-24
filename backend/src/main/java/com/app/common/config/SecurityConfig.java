@@ -24,17 +24,21 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/tickets/*/upload-url").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/tickets/*/attachments").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*/attachments/*/view").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/tickets/*/comments").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*/comments").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
 
                         // tenant specific operations
                         .requestMatchers(HttpMethod.POST, "/api/v1/tickets/").hasRole("TENANT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/me").hasRole("TENANT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*").hasRole("TENANT")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*/close").hasRole("TENANT")
 
                         // technician specific operations
                         .requestMatchers("/api/v1/technician/tickets/**").hasRole("TECHNICIAN")
 
                         // admin specific operations
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/dashboard/stats").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))

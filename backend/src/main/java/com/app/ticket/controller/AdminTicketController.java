@@ -3,8 +3,10 @@ package com.app.ticket.controller;
 import com.app.common.constants.TicketConstants;
 import com.app.common.response.ApiResponse;
 import com.app.ticket.dto.AssignTicketRequest;
+import com.app.ticket.dto.DashboardStatsResponse;
 import com.app.ticket.dto.TechnicianDto;
 import com.app.ticket.dto.TicketResponseDTO;
+import com.app.ticket.service.DashboardServiceImpl;
 import com.app.ticket.service.TicketServiceImpl;
 import com.app.ticket.validation.annotation.ValidateTicketCategory;
 import com.app.ticket.validation.annotation.ValidateTicketPriority;
@@ -26,6 +28,7 @@ import java.util.List;
 @Validated
 public class AdminTicketController {
     private final TicketServiceImpl ticketService;
+    private final DashboardServiceImpl dashboardService;
 
     @GetMapping(path = "/tickets")
     public ResponseEntity<Page<TicketResponseDTO>> getAllTickets(@RequestParam(name = "page", defaultValue = "0") int pageNumber,
@@ -52,5 +55,12 @@ public class AdminTicketController {
         List<TechnicianDto> technicians = ticketService.getTechnicianWithSpecialization();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(technicians);
+    }
+
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<DashboardStatsResponse> getDashboardStats() {
+        DashboardStatsResponse stats = dashboardService.getStats();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(stats);
     }
 }

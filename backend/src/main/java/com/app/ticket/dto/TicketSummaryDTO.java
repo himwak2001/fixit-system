@@ -13,7 +13,7 @@ public class TicketSummaryDTO implements Serializable {
     private TicketResponseDTO ticketDetails;
 
     // comments details
-    private List<CommentDto> comments;
+    private List<CommentResponse> comments;
 
     // attachment details
     private List<AttachmentDto> attachments;
