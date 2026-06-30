@@ -15,6 +15,6 @@ public class CommentResponse implements Serializable {
     private UUID commentId;
     private String comment;
     private String commentedBy;
-    private LocalDateTime commentedAt;
+    private LocalDateTime createdAt;
     private String role;
 }

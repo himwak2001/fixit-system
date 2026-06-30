@@ -1,13 +1,17 @@
 package com.app.common.exception;
 
+import com.app.common.response.ApiResponse;
 import com.app.common.response.ErrorResponseDto;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,94 +20,70 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @ControllerAdvice
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> resourceNotFoundExceptionHandler(ResourceNotFoundException ex, WebRequest webRequest) {
-        ErrorResponseDto responseDto = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.NOT_FOUND,
-                List.of(ex.getMessage()),
-                LocalDateTime.now()
-        );
+    public ResponseEntity<ApiResponse<Void>> resourceNotFoundExceptionHandler(ResourceNotFoundException ex, WebRequest webRequest) {
+        log.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(responseDto);
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponseDto> resourceAlreadyExistsExceptionHandler(ResourceAlreadyExistsException ex, WebRequest webRequest) {
-        ErrorResponseDto responseDto = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.CONFLICT,
-                List.of(ex.getMessage()),
-                LocalDateTime.now()
-        );
+    public ResponseEntity<ApiResponse<Void>> resourceAlreadyExistsExceptionHandler(ResourceAlreadyExistsException ex, WebRequest webRequest) {
+        log.warn("Resource already exists: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(responseDto);
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(BusinessRuleException.class)
-    public ResponseEntity<ErrorResponseDto> businessRuleExceptionHandler(BusinessRuleException ex, WebRequest webRequest) {
-        ErrorResponseDto responseDto = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.BAD_REQUEST,
-                List.of(ex.getMessage()),
-                LocalDateTime.now()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(responseDto);
+    public ResponseEntity<ApiResponse<Void>> businessRuleExceptionHandler(BusinessRuleException ex, WebRequest webRequest) {
+        log.warn("Business rule violation: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(UnauthorizedAccessException.class)
-    public ResponseEntity<ErrorResponseDto> unauthorizedAccessExceptionHandler(UnauthorizedAccessException ex, WebRequest webRequest) {
-        ErrorResponseDto responseDto = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.BAD_REQUEST,
-                List.of(ex.getMessage()),
-                LocalDateTime.now()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(responseDto);
+    public ResponseEntity<ApiResponse<Void>> unauthorizedAccessExceptionHandler(UnauthorizedAccessException ex, WebRequest webRequest) {
+        log.warn("Unauthorized access: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDto> generalExceptionHandler(Exception ex, WebRequest webRequest) {
-        ErrorResponseDto responseDto = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.BAD_REQUEST,
-                List.of(ex.getMessage()),
-                LocalDateTime.now()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(responseDto);
+    public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
+        log.error("Unexpected error: {}", ex.getMessage(), ex);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("An unexpected error occurred. Please try again."));
     }
 
-    /**
-     * Global handler for cases where a validations failed
-     *
-     * @param ex      the MethodArgumentNotValidException object
-     * @param request the WebRequest object - provide access to request metadata
-     * @return a structured error response with a 400 BAD_REQUEST status
-     */
-    @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        Map<String, String> validationErrors = new HashMap<>();
-        List<ObjectError> validationErrorList = ex.getBindingResult().getAllErrors();
-        validationErrorList.forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String validationMsg = error.getDefaultMessage();
-            validationErrors.put(fieldName, validationMsg);
-        });
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
+            MethodArgumentNotValidException ex) {
+
+        // Collect all field errors into a map { fieldName -> errorMessage }
+        Map<String, String> errors = new LinkedHashMap<>();
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(err -> errors.put(err.getField(), err.getDefaultMessage()));
+
+        log.warn("Validation failed: {}", errors);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(validationErrors);
+                .body(ApiResponse.error("Validation failed", errors));
     }
 
+
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Map<String, String>> handleConstraintViolation(ConstraintViolationException ex) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleConstraintViolation(ConstraintViolationException ex) {
         Map<String, String> errors = new HashMap<>();
 
         ex.getConstraintViolations().forEach(violation -> {
@@ -113,6 +93,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             errors.put(paramName, violation.getMessage());
         });
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Validation failed", errors));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMalformedJson(HttpMessageNotReadableException ex) {
+
+        log.warn("Malformed request body: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Request body is missing or malformed"));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleWrongMethod(HttpRequestMethodNotSupportedException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error("HTTP method not supported: " + ex.getMethod()));
     }
 }

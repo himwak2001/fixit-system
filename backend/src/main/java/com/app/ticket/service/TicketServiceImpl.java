@@ -65,9 +65,12 @@ public class TicketServiceImpl implements ITicketService {
     @Caching(evict = {
             @CacheEvict(value = "ticket:list", allEntries = true),
             @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
-            @CacheEvict(value = "ticket:info", allEntries = true)
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
     })
-    public String createTicket(TicketCreateRequest request) {
+    public TicketSummaryDTO createTicket(TicketCreateRequest request) {
         // get the user
         UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
         Optional<User> user = userRepository.findByKeycloakId(userDto.getKeycloakId());
@@ -85,14 +88,14 @@ public class TicketServiceImpl implements ITicketService {
         newTicket.setCreatedAt(LocalDateTime.now());
 
         // save to the db
-        ticketRepository.save(newTicket);
+        Ticket savedTicket = ticketRepository.save(newTicket);
 
-        return ticketNumber;
+        return mapper.mapTicketToSummaryDto(savedTicket);
     }
 
     @Override
     @Cacheable(value = "ticket:list", keyGenerator = "ticketListKeyGenerator")
-    public Page<TicketResponseDTO> getMyTickets(int pageNumber, int pageSize, String status, String category) {
+    public PagedResponse<TicketSummaryDTO> getMyTickets(int pageNumber, int pageSize, String status, String category, String priority) {
         // get user from authentication object
         UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
 
@@ -100,7 +103,8 @@ public class TicketServiceImpl implements ITicketService {
         Specification<Ticket> spec = Specification.allOf(
                 ticketSpecification.hasCreatedById(userDto.getKeycloakId()),
                 ticketSpecification.hasStatus(status),
-                ticketSpecification.hasCategory(category)
+                ticketSpecification.hasCategory(category),
+                ticketSpecification.hasPriority(priority)
         );
 
         // Build pageable
@@ -109,27 +113,26 @@ public class TicketServiceImpl implements ITicketService {
         // Fetch and Map
         Page<Ticket> ticketPage = ticketRepository.findAll(spec, pageable);
 
-        return ticketPage.map(mapper::mapTicketToResponseDto);
+        return mapper.mapTicketToPagedTicketDetails(ticketPage);
     }
 
     @Override
     @Cacheable(value = "ticket:info", key = "#ticketNumber")
-    public TicketSummaryDTO getTicketDetails(String ticketNumber) {
+    public TicketDetailDto getTicketDetails(String ticketNumber) {
         // fetch ticket and its comments and attachments details
         Optional<Ticket> ticket = ticketRepository.findByTicketNumber(ticketNumber);
         if (ticket.isEmpty()) {
             throw new ResourceNotFoundException("Ticket", "ticket number", ticketNumber);
         }
-        TicketResponseDTO ticketDto = mapper.mapTicketToResponseDto(ticket.get());
         List<CommentResponse> comments = commentRepository.findDtoByTicketNumber(ticketNumber);
-        List<AttachmentDto> attachments = attachmentRepository.findDtoByTicketNumber(ticketNumber);
+        List<AttachmentResponse> attachments = attachmentRepository.findDtoByTicketNumber(ticketNumber);
 
-        return new TicketSummaryDTO(ticketDto, comments, attachments);
+        return mapper.mapTicketToDetailDto(ticket.get(), comments, attachments);
     }
 
     @Override
-    @Cacheable(value = "ticket:technicianTickets", key = "'technicianAssignTickets'")
-    public List<TicketResponseDTO> getTechnicianAssignedTicket(String status) {
+    // @Cacheable(value = "ticket:technicianTickets", key = "'technicianAssignTickets'")
+    public PagedResponse<TicketSummaryDTO> getTechnicianAssignedTicket(int pageNumber, int pageSize, String status) {
         // get user from authentication object
         UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
         Optional<User> user = userRepository.findByKeycloakId(userDto.getKeycloakId());
@@ -143,9 +146,13 @@ public class TicketServiceImpl implements ITicketService {
                 ticketSpecification.hasStatus(status)
         );
 
-        return ticketRepository.findAll(spec).stream()
-                .map(mapper::mapTicketToResponseDto)
-                .toList();
+        // Build pageable
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+
+        // Fetch and Map
+        Page<Ticket> ticketPage = ticketRepository.findAll(spec, pageable);
+
+        return mapper.mapTicketToPagedTicketDetails(ticketPage);
     }
 
     @Override
@@ -154,10 +161,13 @@ public class TicketServiceImpl implements ITicketService {
             @CacheEvict(value = "ticket:list", allEntries = true),
             @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
             @CacheEvict(value = "ticket:info", allEntries = true),
-            @CacheEvict(value = "ticket:dashboard", allEntries = true)
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
     })
-    public void startTicketByTechnician(String ticketNumber) {
-        transitionTicketStatus(ticketNumber, TicketStatus.IN_PROGRESS);
+    public TicketSummaryDTO startTicketByTechnician(String ticketNumber) {
+        TicketSummaryDTO ticket = transitionTicketStatus(ticketNumber, TicketStatus.IN_PROGRESS);
+        return ticket;
     }
 
     @Override
@@ -165,15 +175,19 @@ public class TicketServiceImpl implements ITicketService {
     @Caching(evict = {
             @CacheEvict(value = "ticket:list", allEntries = true),
             @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
-            @CacheEvict(value = "ticket:info", allEntries = true)
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
     })
-    public void resolveTicketByTechnician(String ticketNumber) {
-        transitionTicketStatus(ticketNumber, TicketStatus.RESOLVED);
+    public TicketSummaryDTO resolveTicketByTechnician(String ticketNumber) {
+        TicketSummaryDTO ticket = transitionTicketStatus(ticketNumber, TicketStatus.RESOLVED);
+        return ticket;
     }
 
     @Override
-    @Cacheable(value = "ticket:list", keyGenerator = "ticketListKeyGenerator")
-    public Page<TicketResponseDTO> getTickets(int pageNumber, int pageSize, String status, String category, String priority, LocalDateTime startDate, LocalDateTime endDate) {
+    // @Cacheable(value = "ticket:list", keyGenerator = "ticketListKeyGenerator")
+    public PagedResponse<TicketSummaryDTO> getTickets(int pageNumber, int pageSize, String status, String category, String priority, LocalDateTime startDate, LocalDateTime endDate) {
         // Build Specifications
         Specification<Ticket> spec = Specification.allOf(
                 ticketSpecification.hasStatus(status),
@@ -188,7 +202,7 @@ public class TicketServiceImpl implements ITicketService {
         // Fetch and Map
         Page<Ticket> ticketPage = ticketRepository.findAll(spec, pageable);
 
-        return ticketPage.map(mapper::mapTicketToResponseDto);
+        return mapper.mapTicketToPagedTicketDetails(ticketPage);
     }
 
     @Override
@@ -196,9 +210,12 @@ public class TicketServiceImpl implements ITicketService {
     @Caching(evict = {
             @CacheEvict(value = "ticket:list", allEntries = true),
             @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
-            @CacheEvict(value = "ticket:info", allEntries = true)
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
     })
-    public void assignTicketToTechnician(AssignTicketRequest assignRequest) {
+    public TicketSummaryDTO assignTicketToTechnician(AssignTicketRequest assignRequest) {
         // Fetch ticket and validate existence
         Ticket savedTicket = ticketRepository.findByTicketNumber(assignRequest.getTicketNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", assignRequest.getTicketNumber()));
@@ -210,15 +227,16 @@ public class TicketServiceImpl implements ITicketService {
         savedTicket.setAssignedTo(user);
         savedTicket.setStatus(TicketStatus.ASSIGNED);
         savedTicket.setUpdatedAt(LocalDateTime.now());
-        ticketRepository.save(savedTicket);
+        Ticket updatedTicket = ticketRepository.save(savedTicket);
+        return mapper.mapTicketToSummaryDto(updatedTicket);
     }
 
     @Override
     @Cacheable(value = "ticket:technicians", key = "'all'")
-    public List<TechnicianDto> getTechnicianWithSpecialization() {
+    public List<TechnicianSummaryDTO> getTechnicianWithSpecialization() {
         List<User> technicians = userRepository.findByRole(UserRole.TECHNICIAN);
         return technicians.stream()
-                .map(userMapper::mapUserToTechnicianDto)
+                .map(userMapper::mapUserToTechnicianSummaryDto)
                 .collect(Collectors.toList());
     }
 
@@ -227,9 +245,12 @@ public class TicketServiceImpl implements ITicketService {
     @Caching(evict = {
             @CacheEvict(value = "ticket:list", allEntries = true),
             @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
-            @CacheEvict(value = "ticket:info", allEntries = true)
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
     })
-    public void closeTicket(String ticketNumber) {
+    public TicketSummaryDTO closeTicket(String ticketNumber) {
         // Fetch ticket and validate existence
         Ticket savedTicket = ticketRepository.findByTicketNumber(ticketNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", ticketNumber));
@@ -246,11 +267,12 @@ public class TicketServiceImpl implements ITicketService {
 
         savedTicket.setStatus(TicketStatus.CLOSED);
         savedTicket.setUpdatedAt(LocalDateTime.now());
-        ticketRepository.save(savedTicket);
+        Ticket persisted = ticketRepository.save(savedTicket);
+        return mapper.mapTicketToSummaryDto(persisted);
     }
 
 
-    private void transitionTicketStatus(String ticketNumber, TicketStatus targetStatus) {
+    private TicketSummaryDTO transitionTicketStatus(String ticketNumber, TicketStatus targetStatus) {
         // Get user and validate existence
         UserProfileDTO userDto = authenticationUtil.getUserFromSecurityContext();
         User user = userRepository.findByKeycloakId(userDto.getKeycloakId())
@@ -278,7 +300,8 @@ public class TicketServiceImpl implements ITicketService {
         // Update state and save
         savedTicket.setStatus(targetStatus);
         savedTicket.setUpdatedAt(LocalDateTime.now());
-        ticketRepository.save(savedTicket);
+        Ticket updatedTicket = ticketRepository.save(savedTicket);
+        return mapper.mapTicketToSummaryDto(updatedTicket);
     }
 
     private String generateTicketNumber() {
