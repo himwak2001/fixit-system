@@ -39,7 +39,12 @@ public class TicketCommentServiceImpl implements ITicketCommentService {
 
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "ticket:admin", allEntries = true)
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
     })
     public CommentResponse addComment(String ticketNumber, CommentRequest request) {
         // resolve ticket

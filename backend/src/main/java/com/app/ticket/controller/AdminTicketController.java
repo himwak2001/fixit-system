@@ -2,10 +2,7 @@ package com.app.ticket.controller;
 
 import com.app.common.constants.TicketConstants;
 import com.app.common.response.ApiResponse;
-import com.app.ticket.dto.AssignTicketRequest;
-import com.app.ticket.dto.DashboardStatsResponse;
-import com.app.ticket.dto.TechnicianDto;
-import com.app.ticket.dto.TicketResponseDTO;
+import com.app.ticket.dto.*;
 import com.app.ticket.service.DashboardServiceImpl;
 import com.app.ticket.service.TicketServiceImpl;
 import com.app.ticket.validation.annotation.ValidateTicketCategory;
@@ -31,36 +28,36 @@ public class AdminTicketController {
     private final DashboardServiceImpl dashboardService;
 
     @GetMapping(path = "/tickets")
-    public ResponseEntity<Page<TicketResponseDTO>> getAllTickets(@RequestParam(name = "page", defaultValue = "0") int pageNumber,
-                                                                 @RequestParam(name = "size", defaultValue = "10") int pageSize,
-                                                                 @RequestParam(name = "status", required = false) @ValidateTicketStatus String status,
-                                                                 @RequestParam(name = "category", required = false) @ValidateTicketCategory String category,
-                                                                 @RequestParam(name = "priority", required = false) @ValidateTicketPriority String priority,
-                                                                 @RequestParam(name = "startDate", required = false) LocalDateTime startDate,
-                                                                 @RequestParam(name = "endDate", required = false) LocalDateTime endDate) {
-        Page<TicketResponseDTO> tickets = ticketService.getTickets(pageNumber, pageSize, status, category, priority, startDate, endDate);
+    public ResponseEntity<ApiResponse<PagedResponse<TicketSummaryDTO>>> getAllTickets(@RequestParam(name = "page", defaultValue = "0") int pageNumber,
+                                                                                      @RequestParam(name = "size", defaultValue = "10") int pageSize,
+                                                                                      @RequestParam(name = "status", required = false) @ValidateTicketStatus String status,
+                                                                                      @RequestParam(name = "category", required = false) @ValidateTicketCategory String category,
+                                                                                      @RequestParam(name = "priority", required = false) @ValidateTicketPriority String priority,
+                                                                                      @RequestParam(name = "startDate", required = false) LocalDateTime startDate,
+                                                                                      @RequestParam(name = "endDate", required = false) LocalDateTime endDate) {
+        PagedResponse<TicketSummaryDTO> tickets = ticketService.getTickets(pageNumber, pageSize, status, category, priority, startDate, endDate);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(tickets);
+                .body(ApiResponse.success("All tickets fetched successfully", tickets));
     }
 
     @PutMapping("/tickets/assign")
-    public ResponseEntity<ApiResponse> assignTicket(@RequestBody @Valid AssignTicketRequest request) {
-        ticketService.assignTicketToTechnician(request);
+    public ResponseEntity<ApiResponse<TicketSummaryDTO>> assignTicket(@RequestBody @Valid AssignTicketRequest request) {
+        TicketSummaryDTO ticketSummary = ticketService.assignTicketToTechnician(request);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(new ApiResponse(TicketConstants.STATUS_200, TicketConstants.MESSAGE_200, LocalDateTime.now()));
+                .body(ApiResponse.success("Ticket assigned successfully", ticketSummary));
     }
 
     @GetMapping("/technicians")
-    public ResponseEntity<List<TechnicianDto>> getTechnicians() {
-        List<TechnicianDto> technicians = ticketService.getTechnicianWithSpecialization();
+    public ResponseEntity<ApiResponse<List<TechnicianSummaryDTO>>> getTechnicians() {
+        List<TechnicianSummaryDTO> technicians = ticketService.getTechnicianWithSpecialization();
         return ResponseEntity.status(HttpStatus.OK)
-                .body(technicians);
+                .body(ApiResponse.success("Technicians fetched successfully", technicians));
     }
 
     @GetMapping("/dashboard/stats")
-    public ResponseEntity<DashboardStatsResponse> getDashboardStats() {
+    public ResponseEntity<ApiResponse<DashboardStatsResponse>> getDashboardStats() {
         DashboardStatsResponse stats = dashboardService.getStats();
         return ResponseEntity.status(HttpStatus.OK)
-                .body(stats);
+                .body(ApiResponse.success("Dashboard stats fetched successfully", stats));
     }
 }

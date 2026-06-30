@@ -3,6 +3,7 @@ package com.app.ticket.dto;
 import com.app.ticket.validation.annotation.ValidateTicketCategory;
 import com.app.ticket.validation.annotation.ValidateTicketPriority;
 import com.app.ticket.validation.annotation.ValidateTicketStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -13,6 +14,7 @@ import lombok.*;
 @AllArgsConstructor
 @ToString
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class TicketCreateRequest {
     @NotBlank(message = "Ticket title should not ne empty!")
     @Size(message = "Description cannot exceed 50 words!")

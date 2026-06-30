@@ -27,12 +27,13 @@ public class UserServiceImpl implements IUserService {
      * persists it. It is executed within a transactional context to ensure
      * data integrity.
      * </p>
+     *
      * @return the unique string ID of the newly saved user
      * @throws ResourceAlreadyExistsException if a user with the same email already exists in the database
      */
     @Override
     @Transactional
-    public String syncKeycloakUserToDB() {
+    public UserProfileDTO syncKeycloakUserToDB() {
         // Get the user from authentication object
         UserProfileDTO dto = authUtil.getUserFromSecurityContext();
 
@@ -40,7 +41,7 @@ public class UserServiceImpl implements IUserService {
         Optional<User> existingUser = userRepository.findByEmail(dto.getEmail());
 
         // validate whether user with given email is already exists
-        if (existingUser.isPresent()) throw new ResourceAlreadyExistsException("User", "email", dto.getEmail());
+        if (existingUser.isPresent()) return dto;
 
         // map the dto to user
         User newUser = new User();
@@ -50,11 +51,12 @@ public class UserServiceImpl implements IUserService {
         userRepository.save(newUser);
 
         // return synced user id
-        return newUser.getId().toString();
+        return dto;
     }
 
     /**
      * Retrieves the profile details of the currently authenticated user from the security context.
+     *
      * @return the {@link UserProfileDTO} containing the logged-in user's data
      */
     @Override

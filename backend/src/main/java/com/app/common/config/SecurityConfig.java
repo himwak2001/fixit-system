@@ -6,15 +6,24 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+    private final CorsConfigurationSource corsConfigurationSource;
+
+    public SecurityConfig(CorsConfigurationSource corsConfigurationSource) {
+        this.corsConfigurationSource = corsConfigurationSource;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
                         // Authentication Sync & Profiles (Available to any logged-in user)
                         .requestMatchers("/api/v1/auth/sync").authenticated()
@@ -26,11 +35,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*/attachments/*/view").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/tickets/*/comments").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*/comments").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*").hasAnyRole("TENANT", "ADMIN", "TECHNICIAN")
 
                         // tenant specific operations
                         .requestMatchers(HttpMethod.POST, "/api/v1/tickets/").hasRole("TENANT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/me").hasRole("TENANT")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*").hasRole("TENANT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*/close").hasRole("TENANT")
 
                         // technician specific operations
@@ -43,6 +52,7 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }
 

@@ -26,10 +26,10 @@ public class AuthController {
      * * @return a {@link ResponseEntity} containing the {@link ApiResponse} with the sync status and timestamp
      */
     @PostMapping(path = "/sync")
-    public ResponseEntity<ApiResponse> syncAuthenticatedUser() {
-        String userId = userService.syncKeycloakUserToDB();
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse(UserConstants.STATUS_201, UserConstants.getSyncMessage(userId), LocalDateTime.now()));
+    public ResponseEntity<ApiResponse<UserProfileDTO>> syncAuthenticatedUser() {
+        UserProfileDTO profile = userService.syncKeycloakUserToDB();
+        return ResponseEntity
+                .ok(ApiResponse.success("User synced successfully", profile));
     }
 
     /**
@@ -37,9 +37,9 @@ public class AuthController {
      * * @return a {@link ResponseEntity} containing the {@link UserProfileDTO} with the user's details
      */
     @GetMapping(path = "/me")
-    public ResponseEntity<UserProfileDTO> getUserDetails() {
-        UserProfileDTO dto = userService.getUser();
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(dto);
+    public ResponseEntity<ApiResponse<UserProfileDTO>> getUserDetails() {
+        UserProfileDTO profile = userService.getUser();
+        return ResponseEntity
+                .ok(ApiResponse.success("Profile fetched successfully", profile));
     }
 }
