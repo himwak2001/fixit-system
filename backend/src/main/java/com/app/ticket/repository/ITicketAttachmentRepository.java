@@ -1,6 +1,7 @@
 package com.app.ticket.repository;
 
 import com.app.ticket.dto.AttachmentDto;
+import com.app.ticket.dto.AttachmentResponse;
 import com.app.ticket.entity.TicketAttachment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,15 +15,15 @@ public interface ITicketAttachmentRepository extends JpaRepository<TicketAttachm
     List<TicketAttachment> findByTicketTicketNumber(String ticketNumber);
 
     @Query("""
-            SELECT new com.app.ticket.dto.AttachmentDto(
-                    a.id, a.fileName, a.s3Key, a.uploadedAt
+            SELECT new com.app.ticket.dto.AttachmentResponse(
+                    a.id, a.fileName, u.fullName, a.uploadedAt
                 )
                 FROM TicketAttachment a
                 JOIN a.user u
                 JOIN a.ticket t
                 WHERE t.ticketNumber = :ticketNumber
             """)
-    List<AttachmentDto> findDtoByTicketNumber(String ticketNumber);
+    List<AttachmentResponse> findDtoByTicketNumber(String ticketNumber);
 
     @Query("""
              SELECT a

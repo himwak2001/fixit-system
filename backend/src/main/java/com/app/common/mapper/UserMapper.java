@@ -2,7 +2,7 @@ package com.app.common.mapper;
 
 import com.app.auth.dto.UserProfileDTO;
 import com.app.auth.entity.User;
-import com.app.ticket.dto.TechnicianDto;
+import com.app.ticket.dto.TechnicianSummaryDTO;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -20,10 +20,11 @@ public class UserMapper {
         user.setCreatedAt(LocalDateTime.now());
     }
 
-    public TechnicianDto mapUserToTechnicianDto(User user) {
-        return TechnicianDto.builder()
+    public TechnicianSummaryDTO mapUserToTechnicianSummaryDto(User user) {
+        return TechnicianSummaryDTO.builder()
                 .id(user.getKeycloakId())
-                .name(user.getFullName())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
                 .specialization(user.getSpecialization()).build();
     }
 

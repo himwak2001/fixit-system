@@ -18,6 +18,8 @@ import com.app.ticket.repository.ITicketRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -36,6 +38,14 @@ public class TicketAttachmentServiceImpl implements ITicketAttachmentService {
 
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
+    })
     public PresignedUrlResponse generateUploadUrl(String ticketNumber, PresignedUrlRequest request) {
         // resolve ticket
         Ticket ticket = ticketRepository.findByTicketNumber(ticketNumber).orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", ticketNumber));
@@ -64,6 +74,14 @@ public class TicketAttachmentServiceImpl implements ITicketAttachmentService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
+    })
     public AttachmentResponse confirmUpload(String ticketNumber, AttachmentConfirmRequest request) {
         // resolve ticket
         Ticket ticket = ticketRepository.findByTicketNumber(ticketNumber).orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", ticketNumber));
@@ -108,6 +126,14 @@ public class TicketAttachmentServiceImpl implements ITicketAttachmentService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ticket:list", allEntries = true),
+            @CacheEvict(value = "ticket:technicianTickets", allEntries = true),
+            @CacheEvict(value = "ticket:info", allEntries = true),
+            @CacheEvict(value = "ticket:admin", allEntries = true),
+            @CacheEvict(value = "ticket:dashboard", allEntries = true),
+            @CacheEvict(value = "ticket:technicians", allEntries = true)
+    })
     public ViewUrlResponse getViewUrl(String ticketNumber, UUID attachmentId) {
         // resolve ticket
         Ticket ticket = ticketRepository.findByTicketNumber(ticketNumber).orElseThrow(() -> new ResourceNotFoundException("Ticket", "ticket number", ticketNumber));

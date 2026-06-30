@@ -1,10 +1,11 @@
 package com.app.ticket.mapper;
 
-import com.app.ticket.dto.CommentResponse;
-import com.app.ticket.dto.TicketCreateRequest;
-import com.app.ticket.dto.TicketResponseDTO;
+import com.app.ticket.dto.*;
 import com.app.ticket.entity.*;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class TicketMapper {
@@ -19,6 +20,63 @@ public class TicketMapper {
         } else {
             ticket.setStatus(TicketStatus.valueOf(request.getStatus().trim().toUpperCase()));
         }
+    }
+
+    public TicketSummaryDTO mapTicketToSummaryDto(Ticket ticket) {
+        return TicketSummaryDTO.builder()
+                .id(ticket.getId())
+                .ticketNumber(ticket.getTicketNumber())
+                .title(ticket.getTitle())
+                .category(ticket.getCategory())
+                .priority(ticket.getPriority())
+                .status(ticket.getStatus())
+                .location(ticket.getLocation())
+                .createdByName(ticket.getCreatedBy().getFullName())
+                .assignedToName(
+                        ticket.getAssignedTo() != null
+                                ? ticket.getAssignedTo().getFullName()
+                                : "Unassigned"
+                )
+                .createdAt(ticket.getCreatedAt())
+                .updatedAt(ticket.getUpdatedAt()).build();
+    }
+
+    public PagedResponse<TicketSummaryDTO> mapTicketToPagedTicketDetails(Page<Ticket> ticketPage) {
+        Page<TicketSummaryDTO> summary = ticketPage.map(this::mapTicketToSummaryDto);
+        return PagedResponse.<TicketSummaryDTO>builder()
+                .content(summary.getContent())
+                .page(summary.getNumber())
+                .size(summary.getSize())
+                .totalElements(summary.getTotalElements())
+                .totalPages(summary.getTotalPages())
+                .last(summary.isLast()).build();
+    }
+
+    public TicketDetailDto mapTicketToDetailDto(Ticket ticket, List<CommentResponse> comments, List<AttachmentResponse> attachments) {
+        return TicketDetailDto.builder()
+                .id(ticket.getId())
+                .ticketNumber(ticket.getTicketNumber())
+                .title(ticket.getTitle())
+                .description(ticket.getDescription())
+                .category(ticket.getCategory())
+                .priority(ticket.getPriority())
+                .status(ticket.getStatus())
+                .location(ticket.getLocation())
+                .createdById(ticket.getCreatedBy().getId())
+                .createdByName(ticket.getCreatedBy().getFullName())
+                .assignedToId(
+                        ticket.getAssignedTo() != null
+                                ? ticket.getAssignedTo().getId()
+                                : null
+                )
+                .assignedToName(ticket.getAssignedTo() != null
+                        ? ticket.getAssignedTo().getFullName()
+                        : "Unassigned")
+                .createdAt(ticket.getCreatedAt())
+                .updatedAt(ticket.getUpdatedAt())
+                .resolvedAt(ticket.getResolvedAt())
+                .comments(comments)
+                .attachments(attachments).build();
     }
 
     public TicketResponseDTO mapTicketToResponseDto(Ticket ticket) {
@@ -45,7 +103,7 @@ public class TicketMapper {
                 .comment(comment.getComment())
                 .commentedBy(comment.getUser().getFullName())
                 .role(comment.getUser().getRole().name())
-                .commentedAt(comment.getCreatedAt())
+                .createdAt(comment.getCreatedAt())
                 .build();
     }
 }

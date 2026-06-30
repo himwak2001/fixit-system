@@ -10,7 +10,7 @@ import java.util.List;
 public class TicketStatusValidator implements ConstraintValidator<ValidateTicketStatus, String> {
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
-        if (value == null) {
+        if (value == null || value.trim().isEmpty()) {
             return true;
         }
         List<String> validStatus = Arrays.asList("OPEN", "ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED");

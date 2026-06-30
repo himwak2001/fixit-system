@@ -7,8 +7,9 @@ import java.io.Serializable;
 
 @Data
 @Builder
-public class TechnicianDto implements Serializable {
+public class TechnicianSummaryDTO implements Serializable {
     private String id;
-    private String name;
+    private String fullName;
+    private String email;
     private String specialization;
 }
