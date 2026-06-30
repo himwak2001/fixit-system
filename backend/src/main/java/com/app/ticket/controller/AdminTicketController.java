@@ -60,4 +60,11 @@ public class AdminTicketController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Dashboard stats fetched successfully", stats));
     }
+
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<DashboardStatsResponse> getDashboardStats() {
+        DashboardStatsResponse stats = dashboardService.getStats();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(stats);
+    }
 }

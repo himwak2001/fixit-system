@@ -93,4 +93,46 @@ public class TicketController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Ticket closed successfully", detail));
     }
+
+    @PostMapping(path = "/{ticketNumber}/upload-url")
+    public ResponseEntity<PresignedUrlResponse> getUploadUrl(@PathVariable(name = "ticketNumber") String ticketNumber, @Valid @RequestBody PresignedUrlRequest request) {
+        PresignedUrlResponse response = ticketAttachmentService.generateUploadUrl(ticketNumber, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @PostMapping(path = "/{ticketNumber}/attachments")
+    public ResponseEntity<AttachmentResponse> confirmUpload(@PathVariable(name = "ticketNumber") String ticketNumber, @Valid @RequestBody AttachmentConfirmRequest request) {
+        AttachmentResponse response = ticketAttachmentService.confirmUpload(ticketNumber, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @GetMapping(path = "/{ticketNumber}/attachments/{attachmentId}/view")
+    public ResponseEntity<ViewUrlResponse> getViewUrl(@PathVariable(name = "ticketNumber") String ticketNumber, @PathVariable(name = "attachmentId") UUID attachmentId) {
+        ViewUrlResponse response = ticketAttachmentService.getViewUrl(ticketNumber, attachmentId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @PostMapping(path = "/{ticketNumber}/comments")
+    public ResponseEntity<CommentResponse> addComment(@PathVariable(name = "ticketNumber") String ticketNumber, @Valid @RequestBody CommentRequest request) {
+        CommentResponse response = commentService.addComment(ticketNumber, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    @GetMapping(path = "/{ticketNumber}/comments")
+    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable(name = "ticketNumber") String ticketNumber) {
+        List<CommentResponse> comments = commentService.getComments(ticketNumber);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(comments);
+    }
+
+    @GetMapping("/{ticketNumber}/close")
+    public ResponseEntity<ApiResponse> closeTicket(@PathVariable(name = "ticketNumber") String ticketNumber) {
+        ticketService.closeTicket(ticketNumber);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(new ApiResponse(TicketConstants.STATUS_200, TicketConstants.MESSAGE_200, LocalDateTime.now()));
+    }
 }
